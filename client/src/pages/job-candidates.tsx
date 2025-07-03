@@ -36,7 +36,7 @@ export default function JobCandidatesPage() {
   const [selectedCandidate, setSelectedCandidate] = useState<number | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [scoreFilter, setScoreFilter] = useState<string>("");
   
   const queryClient = useQueryClient();
@@ -50,7 +50,7 @@ export default function JobCandidatesPage() {
 
   // Get candidates for this job
   const { data: candidatesData, isLoading } = useQuery({
-    queryKey: ['/api/candidates', { jobDescriptionId: jobId, search: searchTerm, status: statusFilter }],
+    queryKey: ['/api/candidates', { jobDescriptionId: jobId, search: searchTerm, status: statusFilter === 'all' ? '' : statusFilter }],
     enabled: !!jobId,
   });
 
@@ -143,7 +143,7 @@ export default function JobCandidatesPage() {
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="shortlisted">Shortlisted</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>

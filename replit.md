@@ -88,6 +88,8 @@ TalentMatch ATS is a full-stack application that streamlines the recruitment pro
   - Added PDF export functionality with Core Maestro Management branding
   - Removed contact details from PDF exports for recruiter privacy control
   - Fixed UI bugs in candidate profile data loading
+  - Fixed Select component validation error for status filtering
+  - Resolved PDF generation issues with correct jsPDF import
 
 ## User Preferences
 
