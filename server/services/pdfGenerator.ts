@@ -1,7 +1,14 @@
 import { jsPDF } from 'jspdf';
 import type { CandidateWithAnalysis } from '@shared/schema';
 
-export function generateCandidatePDF(candidate: CandidateWithAnalysis): Buffer {
+export function generateCandidatePDF(
+  candidate: CandidateWithAnalysis, 
+  options?: { 
+    includeAnalysis?: boolean; 
+    includeContact?: boolean; 
+    includeNotes?: boolean 
+  }
+): Buffer {
   const doc = new jsPDF();
   
   // Core Maestro Management branding
@@ -19,14 +26,34 @@ export function generateCandidatePDF(candidate: CandidateWithAnalysis): Buffer {
   
   let yPosition = 50;
   
-  // Candidate Name (no contact details)
+  // Candidate Name
   doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
   doc.text(candidate.name || 'Unknown Candidate', 20, yPosition);
-  yPosition += 15;
+  yPosition += 10;
+
+  // Contact Information (conditional)
+  if (options?.includeContact) {
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    if (candidate.email) {
+      doc.text(`Email: ${candidate.email}`, 20, yPosition);
+      yPosition += 5;
+    }
+    if (candidate.phone) {
+      doc.text(`Phone: ${candidate.phone}`, 20, yPosition);
+      yPosition += 5;
+    }
+    if (candidate.location) {
+      doc.text(`Location: ${candidate.location}`, 20, yPosition);
+      yPosition += 5;
+    }
+  }
   
-  // AI Match Score
-  if (candidate.analysis?.matchScore) {
+  yPosition += 5;
+  
+  // AI Match Score (conditional)
+  if (options?.includeAnalysis && candidate.analysis?.matchScore) {
     doc.setFontSize(12);
     doc.setTextColor(0, 123, 255);
     doc.text(`AI Match Score: ${candidate.analysis.matchScore}%`, 20, yPosition);
@@ -75,12 +102,12 @@ export function generateCandidatePDF(candidate: CandidateWithAnalysis): Buffer {
       }
       
       doc.setFontSize(11);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text(`${exp.title || 'Position'} at ${exp.company || 'Company'}`, 20, yPosition);
       yPosition += 6;
       
       if (exp.duration) {
-        doc.setFont(undefined, 'normal');
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(128, 128, 128);
         doc.text(exp.duration, 20, yPosition);

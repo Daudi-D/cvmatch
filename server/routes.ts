@@ -324,7 +324,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Candidate not found" });
       }
 
-      const pdfBuffer = generateCandidatePDF(candidate);
+      const options = {
+        includeAnalysis: req.query.includeAnalysis === 'true',
+        includeContact: req.query.includeContact === 'true',
+        includeNotes: req.query.includeNotes === 'true'
+      };
+
+      const pdfBuffer = generateCandidatePDF(candidate, options);
       const candidateName = candidate.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'candidate';
       
       res.setHeader('Content-Type', 'application/pdf');

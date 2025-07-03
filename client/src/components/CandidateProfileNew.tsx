@@ -209,7 +209,7 @@ export default function CandidateProfile({ candidateId, onClose }: CandidateProf
                     <div>
                       <h5 className="font-medium text-gray-900 mb-2">Strengths for this Role:</h5>
                       <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                        {candidate.analysis.strengths.map((strength, index) => (
+                        {candidate.analysis.strengths.map((strength: string, index: number) => (
                           <li key={index}>{strength}</li>
                         ))}
                       </ul>
@@ -220,7 +220,7 @@ export default function CandidateProfile({ candidateId, onClose }: CandidateProf
                     <div>
                       <h5 className="font-medium text-gray-900 mb-2">Areas for Development:</h5>
                       <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                        {candidate.analysis.weaknesses.map((weakness, index) => (
+                        {candidate.analysis.weaknesses.map((weakness: string, index: number) => (
                           <li key={index}>{weakness}</li>
                         ))}
                       </ul>
@@ -253,7 +253,7 @@ export default function CandidateProfile({ candidateId, onClose }: CandidateProf
               <CardContent className="p-6">
                 <h4 className="font-semibold text-gray-900 mb-4">Key Skills</h4>
                 <div className="flex flex-wrap gap-2">
-                  {candidate.skills?.map((skill, index) => (
+                  {candidate.skills?.map((skill: string, index: number) => (
                     <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800">
                       {skill}
                     </Badge>
@@ -329,7 +329,7 @@ export default function CandidateProfile({ candidateId, onClose }: CandidateProf
                 {candidate.certifications && candidate.certifications.length > 0 && (
                   <div className="mt-4">
                     <h5 className="font-medium text-gray-900 mb-2">Certifications:</h5>
-                    {candidate.certifications.map((cert, index) => (
+                    {candidate.certifications.map((cert: string, index: number) => (
                       <div key={index} className="flex items-center mb-2">
                         <Tag className="text-primary mr-3 h-4 w-4" />
                         <p className="text-sm">{cert}</p>
