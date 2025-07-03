@@ -216,7 +216,7 @@ export default function CandidatesDashboard({ onViewCandidate }: CandidatesDashb
                             {candidate.analysis?.matchScore || 0}%
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 mt-1 max-w-xs truncate">
                           {candidate.analysis?.recommendation || "No analysis available"}
                         </p>
                       </td>

@@ -90,6 +90,11 @@ TalentMatch ATS is a full-stack application that streamlines the recruitment pro
   - Fixed UI bugs in candidate profile data loading
   - Fixed Select component validation error for status filtering
   - Resolved PDF generation issues with correct jsPDF import
+- July 03, 2025. Post-migration fixes and enhancements:
+  - Fixed AI match score summary width constraints to prevent table stretching
+  - Enhanced work experience display to convert OpenAI paragraph descriptions to bullet points
+  - Fixed PDF export toggle functionality to properly exclude AI analysis when unchecked
+  - Improved user experience with better text formatting and layout management
 
 ## User Preferences
 

@@ -149,18 +149,21 @@ export default function CandidateProfile({ candidateId, onClose }: CandidateProf
   const formatWorkExperience = (description: string) => {
     if (!description) return null;
     
-    return description.split('\n').map((line: string, lineIndex: number) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+    // Split by sentences and common delimiters to create bullet points
+    const sentences = description.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    
+    return sentences.map((sentence: string, index: number) => {
+      const trimmedSentence = sentence.trim();
+      if (trimmedSentence) {
         return (
-          <div key={lineIndex} className="flex items-start mb-1">
-            <span className="text-primary mr-2 mt-1">•</span>
-            <span>{trimmedLine.substring(1).trim()}</span>
+          <div key={index} className="flex items-start mb-2">
+            <span className="text-primary mr-2 mt-1 text-xs">•</span>
+            <span className="text-sm">{trimmedSentence}</span>
           </div>
         );
       }
-      return trimmedLine ? <p key={lineIndex} className="mb-1">{trimmedLine}</p> : null;
-    });
+      return null;
+    }).filter(Boolean);
   };
 
   return (

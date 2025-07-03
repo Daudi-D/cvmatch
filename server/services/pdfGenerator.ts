@@ -155,7 +155,7 @@ export function generateCandidatePDF(
   }
   
   // AI Analysis
-  if (candidate.analysis) {
+  if (candidate.analysis && options?.includeAnalysis !== false) {
     if (yPosition > 200) {
       doc.addPage();
       yPosition = 20;
