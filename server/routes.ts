@@ -42,6 +42,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all job descriptions
+  app.get("/api/job-descriptions", async (req, res) => {
+    try {
+      const jobs = await storage.getAllJobDescriptions();
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Get specific job description
+  app.get("/api/job-description/:id", async (req, res) => {
+    try {
+      const jobId = parseInt(req.params.id);
+      const job = await storage.getJobDescription(jobId);
+      if (!job) {
+        return res.status(404).json({ message: "Job description not found" });
+      }
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
   // Upload job description
   app.post("/api/job-description/upload", upload.single('file'), async (req, res) => {
     try {
@@ -96,9 +120,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No files uploaded" });
       }
 
-      const activeJD = await storage.getActiveJobDescription();
-      if (!activeJD) {
-        return res.status(400).json({ message: "No active job description found. Please upload a job description first." });
+      const { jobDescriptionId } = req.body;
+      let targetJD;
+
+      if (jobDescriptionId) {
+        targetJD = await storage.getJobDescription(parseInt(jobDescriptionId));
+        if (!targetJD) {
+          return res.status(400).json({ message: "Job description not found" });
+        }
+      } else {
+        targetJD = await storage.getActiveJobDescription();
+        if (!targetJD) {
+          return res.status(400).json({ message: "No active job description found. Please upload a job description first." });
+        }
       }
 
       const results = [];
@@ -124,6 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Save candidate to database
           const candidateData = {
             ...extractedInfo,
+            jobDescriptionId: targetJD.id,
             rawText,
             fileName: file.originalname,
             embedding,
@@ -132,15 +167,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const validatedCandidateData = insertCandidateSchema.parse(candidateData);
           const savedCandidate = await storage.createCandidate(validatedCandidateData);
 
-          // Perform AI analysis against active job description
+          // Perform AI analysis against target job description
           const analysis = await analyzeCandidateMatch(
             rawText,
-            `${activeJD.description} ${activeJD.requirements}`,
+            `${targetJD.description} ${targetJD.requirements}`,
             extractedInfo.name
           );
 
           // Calculate similarity score using embeddings
-          const embeddingScore = await calculateMatchScore(embedding, activeJD.embedding!);
+          const embeddingScore = await calculateMatchScore(embedding, targetJD.embedding!);
           
           // Use the higher of the two scores for final match score
           const finalMatchScore = Math.max(analysis.matchScore, embeddingScore);
@@ -148,12 +183,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Save analysis to database
           const analysisData = {
             candidateId: savedCandidate.id,
-            jobDescriptionId: activeJD.id,
+            jobDescriptionId: targetJD.id,
             matchScore: finalMatchScore,
+            skillsMatch: analysis.skillsMatch,
+            experienceMatch: analysis.experienceMatch,
+            educationMatch: analysis.educationMatch,
+            industryMatch: analysis.industryMatch,
             strengths: analysis.strengths,
             weaknesses: analysis.weaknesses,
             recommendation: analysis.recommendation,
             detailedAnalysis: analysis.detailedAnalysis,
+            isMatch: analysis.isMatch,
           };
 
           const validatedAnalysisData = insertCandidateAnalysisSchema.parse(analysisData);
@@ -192,12 +232,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all candidates with analysis
   app.get("/api/candidates", async (req, res) => {
     try {
-      const { search, minScore, maxScore, page = 1, limit = 10 } = req.query;
+      const { jobDescriptionId, search, minScore, maxScore, status, page = 1, limit = 10 } = req.query;
       
       const candidates = await storage.getCandidatesWithAnalysis({
+        jobDescriptionId: jobDescriptionId ? parseInt(jobDescriptionId as string) : undefined,
         search: search as string,
         minScore: minScore ? parseInt(minScore as string) : undefined,
         maxScore: maxScore ? parseInt(maxScore as string) : undefined,
+        status: status as string,
         page: parseInt(page as string),
         limit: parseInt(limit as string),
       });
@@ -232,6 +274,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json([]);
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Update candidate status
+  app.patch("/api/candidates/:id/status", async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (!status || !['pending', 'shortlisted', 'rejected', 'hired'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be: pending, shortlisted, rejected, or hired" });
+      }
+
+      await storage.updateCandidateStatus(candidateId, status);
+      res.json({ message: "Status updated successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error?.message || 'Unknown error' });
     }
   });
 

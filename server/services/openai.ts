@@ -13,7 +13,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     });
 
     return response.data[0].embedding;
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to generate embedding: ${error.message}`);
   }
 }
@@ -24,10 +24,15 @@ export async function analyzeCandidateMatch(
   candidateName: string
 ): Promise<{
   matchScore: number;
+  skillsMatch: number;
+  experienceMatch: number;
+  educationMatch: number;
+  industryMatch: number;
   strengths: string[];
   weaknesses: string[];
   recommendation: string;
   detailedAnalysis: string;
+  isMatch: boolean;
 }> {
   try {
     const prompt = `
@@ -39,12 +44,24 @@ ${candidateText}
 JOB DESCRIPTION:
 ${jobDescriptionText}
 
-Analyze the match and provide:
-1. A match score from 0-100 with STRICT scoring (be conservative - only give high scores for exceptional matches)
-2. Top 3-5 strengths that make this candidate suitable
-3. Top 3-5 weaknesses or missing qualifications
-4. A recommendation (hire, consider with training, reject)
-5. A detailed 2-3 sentence analysis explaining the overall assessment
+Provide a comprehensive analysis with the following scores (0-100 each):
+1. Overall Match Score (0-100) - STRICT scoring, be conservative
+2. Skills Match Score (0-100) - How well technical/soft skills align
+3. Experience Match Score (0-100) - Years of experience and relevance (CAREFULLY READ ALL WORK HISTORY)
+4. Education Match Score (0-100) - Educational background alignment
+5. Industry Match Score (0-100) - Industry/domain experience relevance
+
+IMPORTANT: When analyzing experience, carefully examine ALL work history entries. Look for:
+- Company names and their industries (e.g., "Lis'Chinese Restaurant" = restaurant industry)
+- Job titles and responsibilities
+- Duration and progression
+- Industry-specific skills gained
+
+Also provide:
+- Top 3-5 strengths that make this candidate suitable
+- Top 3-5 weaknesses or missing qualifications
+- Binary match decision: true (hire) or false (reject) - NO "consider with training"
+- Detailed analysis explaining the overall assessment
 
 SCORING GUIDELINES (BE STRICT):
 - 90-100: Perfect match, exceeds all requirements
@@ -69,10 +86,15 @@ Pay special attention to whether the candidate has demonstrated experience with 
 Respond with JSON in this exact format:
 {
   "matchScore": number,
+  "skillsMatch": number,
+  "experienceMatch": number,
+  "educationMatch": number,
+  "industryMatch": number,
   "strengths": ["strength1", "strength2", ...],
   "weaknesses": ["weakness1", "weakness2", ...],
   "recommendation": "string",
-  "detailedAnalysis": "string"
+  "detailedAnalysis": "string",
+  "isMatch": boolean
 }
 `;
 
@@ -92,16 +114,21 @@ Respond with JSON in this exact format:
       temperature: 0.3,
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const result = JSON.parse(response.choices[0].message.content || "{}");
 
     return {
-      matchScore: Math.max(0, Math.min(100, result.matchScore)),
+      matchScore: Math.max(0, Math.min(100, result.matchScore || 0)),
+      skillsMatch: Math.max(0, Math.min(100, result.skillsMatch || 0)),
+      experienceMatch: Math.max(0, Math.min(100, result.experienceMatch || 0)),
+      educationMatch: Math.max(0, Math.min(100, result.educationMatch || 0)),
+      industryMatch: Math.max(0, Math.min(100, result.industryMatch || 0)),
       strengths: result.strengths || [],
       weaknesses: result.weaknesses || [],
-      recommendation: result.recommendation || "",
-      detailedAnalysis: result.detailedAnalysis || "",
+      recommendation: result.recommendation || "No recommendation available",
+      detailedAnalysis: result.detailedAnalysis || "No analysis available",
+      isMatch: result.isMatch || false,
     };
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to analyze candidate match: ${error.message}`);
   }
 }
@@ -172,7 +199,7 @@ If any field is not found, use empty string for strings, empty array for arrays.
       temperature: 0.1,
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const result = JSON.parse(response.choices[0].message.content || "{}");
 
     return {
       name: result.name || "",
@@ -185,8 +212,8 @@ If any field is not found, use empty string for strings, empty array for arrays.
       education: result.education || [],
       certifications: result.certifications || [],
     };
-  } catch (error) {
-    throw new Error(`Failed to extract candidate information: ${error.message}`);
+  } catch (error: any) {
+    throw new Error(`Failed to extract candidate information: ${error?.message || 'Unknown error'}`);
   }
 }
 

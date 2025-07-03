@@ -14,7 +14,12 @@ interface ProcessingFile {
   error?: string;
 }
 
-export default function CVUpload() {
+interface CVUploadProps {
+  jobDescriptionId?: number;
+  onComplete?: () => void;
+}
+
+export default function CVUpload({ jobDescriptionId, onComplete }: CVUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
   const { toast } = useToast();
@@ -26,6 +31,10 @@ export default function CVUpload() {
         formData.append('files', file);
       });
       
+      if (jobDescriptionId) {
+        formData.append('jobDescriptionId', jobDescriptionId.toString());
+      }
+      
       // Set processing status for all files
       const fileStatuses: ProcessingFile[] = Array.from(files).map(file => ({
         name: file.name,
@@ -33,8 +42,11 @@ export default function CVUpload() {
       }));
       setProcessingFiles(fileStatuses);
 
-      const response = await apiRequest("POST", "/api/candidates/upload", formData);
-      return response.json();
+      const response = await apiRequest('/api/candidates/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      return response;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
@@ -64,6 +76,11 @@ export default function CVUpload() {
         title: "Upload Complete",
         description: `${data.results?.length || 0} CVs processed successfully${data.errors?.length > 0 ? `, ${data.errors.length} failed` : ''}`,
       });
+
+      // Call onComplete callback if provided
+      if (onComplete) {
+        onComplete();
+      }
 
       // Clear processing status after 5 seconds
       setTimeout(() => setProcessingFiles([]), 5000);

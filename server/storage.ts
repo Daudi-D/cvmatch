@@ -24,15 +24,19 @@ export interface IStorage {
 
   // Job Description methods
   getActiveJobDescription(): Promise<JobDescription | undefined>;
+  getAllJobDescriptions(): Promise<JobDescription[]>;
+  getJobDescription(id: number): Promise<JobDescription | undefined>;
   createJobDescription(insertJD: InsertJobDescription): Promise<JobDescription>;
   deactivateAllJobDescriptions(): Promise<void>;
 
   // Candidate methods
   createCandidate(insertCandidate: InsertCandidate): Promise<Candidate>;
   getCandidatesWithAnalysis(filters: {
+    jobDescriptionId?: number;
     search?: string;
     minScore?: number;
     maxScore?: number;
+    status?: string;
     page: number;
     limit: number;
   }): Promise<{
@@ -41,6 +45,7 @@ export interface IStorage {
     hasMore: boolean;
   }>;
   getCandidateWithAnalysis(candidateId: number): Promise<CandidateWithAnalysis | undefined>;
+  updateCandidateStatus(candidateId: number, status: string): Promise<void>;
 
   // Analysis methods
   createCandidateAnalysis(insertAnalysis: InsertCandidateAnalysis): Promise<CandidateAnalysis>;
@@ -75,6 +80,23 @@ export class DatabaseStorage implements IStorage {
     return activeJD || undefined;
   }
 
+  async getAllJobDescriptions(): Promise<JobDescription[]> {
+    const jobs = await db
+      .select()
+      .from(jobDescriptions)
+      .orderBy(desc(jobDescriptions.createdAt));
+    return jobs;
+  }
+
+  async getJobDescription(id: number): Promise<JobDescription | undefined> {
+    const [job] = await db
+      .select()
+      .from(jobDescriptions)
+      .where(eq(jobDescriptions.id, id))
+      .limit(1);
+    return job || undefined;
+  }
+
   async createJobDescription(insertJD: InsertJobDescription): Promise<JobDescription> {
     const [jobDescription] = await db
       .insert(jobDescriptions)
@@ -91,17 +113,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCandidate(insertCandidate: InsertCandidate): Promise<Candidate> {
+    const candidateData = { ...insertCandidate };
+    // Ensure status is a valid enum value
+    if (candidateData.status && !['pending', 'shortlisted', 'rejected', 'hired'].includes(candidateData.status)) {
+      candidateData.status = 'pending';
+    }
+    
     const [candidate] = await db
       .insert(candidates)
-      .values(insertCandidate)
+      .values(candidateData as any)
       .returning();
     return candidate;
   }
 
   async getCandidatesWithAnalysis(filters: {
+    jobDescriptionId?: number;
     search?: string;
     minScore?: number;
     maxScore?: number;
+    status?: string;
     page: number;
     limit: number;
   }): Promise<{
@@ -109,11 +139,15 @@ export class DatabaseStorage implements IStorage {
     total: number;
     hasMore: boolean;
   }> {
-    const { search, minScore, maxScore, page, limit } = filters;
+    const { jobDescriptionId, search, minScore, maxScore, status, page, limit } = filters;
     const offset = (page - 1) * limit;
 
     // Build WHERE conditions
     const conditions = [];
+    
+    if (jobDescriptionId) {
+      conditions.push(eq(candidates.jobDescriptionId, jobDescriptionId));
+    }
     
     if (search) {
       conditions.push(
@@ -123,6 +157,10 @@ export class DatabaseStorage implements IStorage {
           sql`array_to_string(${candidates.skills}, ' ') ILIKE ${'%' + search + '%'}`
         )
       );
+    }
+
+    if (status) {
+      conditions.push(eq(candidates.status, status as any));
     }
 
     if (minScore !== undefined) {
@@ -137,6 +175,7 @@ export class DatabaseStorage implements IStorage {
     const candidatesQuery = db
       .select({
         id: candidates.id,
+        jobDescriptionId: candidates.jobDescriptionId,
         name: candidates.name,
         email: candidates.email,
         phone: candidates.phone,
@@ -149,16 +188,22 @@ export class DatabaseStorage implements IStorage {
         rawText: candidates.rawText,
         fileName: candidates.fileName,
         embedding: candidates.embedding,
+        status: candidates.status,
         createdAt: candidates.createdAt,
         analysis: {
           id: candidateAnalysis.id,
           candidateId: candidateAnalysis.candidateId,
           jobDescriptionId: candidateAnalysis.jobDescriptionId,
           matchScore: candidateAnalysis.matchScore,
+          skillsMatch: candidateAnalysis.skillsMatch,
+          experienceMatch: candidateAnalysis.experienceMatch,
+          educationMatch: candidateAnalysis.educationMatch,
+          industryMatch: candidateAnalysis.industryMatch,
           strengths: candidateAnalysis.strengths,
           weaknesses: candidateAnalysis.weaknesses,
           recommendation: candidateAnalysis.recommendation,
           detailedAnalysis: candidateAnalysis.detailedAnalysis,
+          isMatch: candidateAnalysis.isMatch,
           createdAt: candidateAnalysis.createdAt,
         }
       })
@@ -183,6 +228,7 @@ export class DatabaseStorage implements IStorage {
     // Transform results to match expected format
     const candidatesWithAnalysis: CandidateWithAnalysis[] = results.map(row => ({
       id: row.id,
+      jobDescriptionId: row.jobDescriptionId,
       name: row.name,
       email: row.email,
       phone: row.phone,
@@ -195,6 +241,7 @@ export class DatabaseStorage implements IStorage {
       rawText: row.rawText,
       fileName: row.fileName,
       embedding: row.embedding,
+      status: row.status,
       createdAt: row.createdAt,
       analysis: row.analysis?.id ? row.analysis : undefined,
     }));
@@ -210,6 +257,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .select({
         id: candidates.id,
+        jobDescriptionId: candidates.jobDescriptionId,
         name: candidates.name,
         email: candidates.email,
         phone: candidates.phone,
@@ -222,16 +270,22 @@ export class DatabaseStorage implements IStorage {
         rawText: candidates.rawText,
         fileName: candidates.fileName,
         embedding: candidates.embedding,
+        status: candidates.status,
         createdAt: candidates.createdAt,
         analysis: {
           id: candidateAnalysis.id,
           candidateId: candidateAnalysis.candidateId,
           jobDescriptionId: candidateAnalysis.jobDescriptionId,
           matchScore: candidateAnalysis.matchScore,
+          skillsMatch: candidateAnalysis.skillsMatch,
+          experienceMatch: candidateAnalysis.experienceMatch,
+          educationMatch: candidateAnalysis.educationMatch,
+          industryMatch: candidateAnalysis.industryMatch,
           strengths: candidateAnalysis.strengths,
           weaknesses: candidateAnalysis.weaknesses,
           recommendation: candidateAnalysis.recommendation,
           detailedAnalysis: candidateAnalysis.detailedAnalysis,
+          isMatch: candidateAnalysis.isMatch,
           createdAt: candidateAnalysis.createdAt,
         }
       })
@@ -245,6 +299,7 @@ export class DatabaseStorage implements IStorage {
     const row = result[0];
     return {
       id: row.id,
+      jobDescriptionId: row.jobDescriptionId,
       name: row.name,
       email: row.email,
       phone: row.phone,
@@ -257,6 +312,7 @@ export class DatabaseStorage implements IStorage {
       rawText: row.rawText,
       fileName: row.fileName,
       embedding: row.embedding,
+      status: row.status,
       createdAt: row.createdAt,
       analysis: row.analysis?.id ? row.analysis : undefined,
     };
@@ -268,6 +324,13 @@ export class DatabaseStorage implements IStorage {
       .values(insertAnalysis)
       .returning();
     return analysis;
+  }
+
+  async updateCandidateStatus(candidateId: number, status: string): Promise<void> {
+    await db
+      .update(candidates)
+      .set({ status: status as any })
+      .where(eq(candidates.id, candidateId));
   }
 }
 

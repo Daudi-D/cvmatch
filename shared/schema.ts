@@ -25,6 +25,7 @@ export const jobDescriptions = pgTable("job_descriptions", {
 
 export const candidates = pgTable("candidates", {
   id: serial("id").primaryKey(),
+  jobDescriptionId: integer("job_description_id").references(() => jobDescriptions.id),
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
@@ -37,6 +38,7 @@ export const candidates = pgTable("candidates", {
   rawText: text("raw_text").notNull(),
   fileName: text("file_name").notNull(),
   embedding: text("embedding"), // JSON string of embedding vector
+  status: text("status").default("pending").$type<"pending" | "shortlisted" | "rejected" | "hired">(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -45,10 +47,15 @@ export const candidateAnalysis = pgTable("candidate_analysis", {
   candidateId: integer("candidate_id").notNull(),
   jobDescriptionId: integer("job_description_id").notNull(),
   matchScore: real("match_score").notNull(), // 0-100
+  skillsMatch: real("skills_match").notNull().default(0), // 0-100
+  experienceMatch: real("experience_match").notNull().default(0), // 0-100
+  educationMatch: real("education_match").notNull().default(0), // 0-100
+  industryMatch: real("industry_match").notNull().default(0), // 0-100
   strengths: text("strengths").array(),
   weaknesses: text("weaknesses").array(),
   recommendation: text("recommendation"),
   detailedAnalysis: text("detailed_analysis"),
+  isMatch: boolean("is_match").notNull().default(false), // true/false instead of "consider with training"
   createdAt: timestamp("created_at").defaultNow(),
 });
 
