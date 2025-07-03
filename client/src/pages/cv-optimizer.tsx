@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +58,7 @@ export default function CVOptimizerPage() {
   const [optimizedCVDraft, setOptimizedCVDraft] = useState("");
   const [cvInputMode, setCvInputMode] = useState<'text' | 'file'>('text');
   const [jdInputMode, setJdInputMode] = useState<'text' | 'file'>('text');
+  const [shouldPoll, setShouldPoll] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -137,6 +138,7 @@ export default function CVOptimizerPage() {
     },
     onSuccess: (data) => {
       setOptimizationId(data.optimizationId);
+      setShouldPoll(true); // Start polling immediately
       toast({
         title: "CV Analysis Started",
         description: "Your CV is being analyzed and optimized. This may take a few moments.",
@@ -159,8 +161,18 @@ export default function CVOptimizerPage() {
       return apiRequest(`/api/cv-optimization/${optimizationId}`);
     },
     enabled: !!optimizationId,
-    refetchInterval: (data) => data?.status === 'processing' ? 2000 : false,
+    refetchInterval: shouldPoll ? 2000 : false, // Poll every 2 seconds when processing
+    staleTime: 0, // Override global staleTime for real-time updates
   });
+
+  // Manage polling state
+  useEffect(() => {
+    if (optimization?.status === 'processing') {
+      setShouldPoll(true);
+    } else if (optimization?.status === 'completed' || optimization?.status === 'failed') {
+      setShouldPoll(false);
+    }
+  }, [optimization?.status]);
 
   // Improve specific section
   const improveMutation = useMutation({
