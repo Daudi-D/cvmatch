@@ -471,6 +471,232 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CV Library routes
+  app.get("/api/cv-library", async (req, res) => {
+    try {
+      const cvs = await storage.getUserCvs();
+      res.json(cvs);
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  app.post("/api/cv-library", async (req, res) => {
+    try {
+      const { name, cvText, fileName } = req.body;
+      
+      if (!name || !cvText || !fileName) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const cv = await storage.createUserCv({
+        name,
+        fileName,
+        cvText,
+        isActive: false
+      });
+
+      res.json(cv);
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  app.post("/api/cv-library/upload", upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const { name } = req.body;
+
+      if (!file || !name) {
+        return res.status(400).json({ error: "Missing file or name" });
+      }
+
+      const cvText = await parseFile(file.path, file.originalname);
+      
+      const cv = await storage.createUserCv({
+        name,
+        fileName: file.originalname,
+        cvText,
+        isActive: false
+      });
+
+      // Clean up uploaded file
+      fs.unlinkSync(file.path);
+
+      res.json(cv);
+    } catch (error: any) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  app.post("/api/cv-library/:id/set-active", async (req, res) => {
+    try {
+      const cvId = parseInt(req.params.id);
+      
+      if (isNaN(cvId)) {
+        return res.status(400).json({ error: "Invalid CV ID" });
+      }
+
+      await storage.setActiveCv(cvId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  app.delete("/api/cv-library/:id", async (req, res) => {
+    try {
+      const cvId = parseInt(req.params.id);
+      
+      if (isNaN(cvId)) {
+        return res.status(400).json({ error: "Invalid CV ID" });
+      }
+
+      await storage.deleteUserCv(cvId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  // CV Analysis routes
+  app.post("/api/cv-analysis", async (req, res) => {
+    try {
+      const { cvId, analysisType } = req.body;
+      
+      if (!cvId || !analysisType || !['ats', 'email'].includes(analysisType)) {
+        return res.status(400).json({ error: "Invalid CV ID or analysis type" });
+      }
+
+      const cv = await storage.getUserCv(cvId);
+      if (!cv) {
+        return res.status(404).json({ error: "CV not found" });
+      }
+
+      // Create initial analysis record
+      const analysis = await storage.createCvAnalysis({
+        userCvId: cvId,
+        analysisType,
+        status: 'processing'
+      });
+
+      res.json({ analysisId: analysis.id });
+
+      // Process analysis in background (simplified for demo)
+      setTimeout(async () => {
+        try {
+          // Mock analysis results for demo
+          const mockAnalysis = {
+            overallScore: 75 + Math.floor(Math.random() * 20),
+            structureAnalysis: {
+              sections: [
+                { name: "Contact Information", present: true, quality: "good" as const, feedback: "Complete contact details provided" },
+                { name: "Professional Summary", present: true, quality: "fair" as const, feedback: "Could be more impactful" },
+                { name: "Work Experience", present: true, quality: "good" as const, feedback: "Well structured with clear dates" },
+                { name: "Education", present: true, quality: "good" as const, feedback: "Relevant qualifications listed" },
+                { name: "Skills", present: true, quality: "fair" as const, feedback: "Mix of technical and soft skills" }
+              ],
+              length: { score: 80, feedback: "Appropriate length for the role", wordCount: 450, recommendation: "Consider adding more quantified achievements" },
+              organization: { score: 85, feedback: "Well organized with clear sections" }
+            },
+            contentAnalysis: {
+              keywords: { score: 70, strength: "moderate" as const, suggestions: ["Add more industry-specific keywords", "Include technical terms from job descriptions"] },
+              achievements: { score: 65, quantified: 3, total: 7, suggestions: ["Add numbers to demonstrate impact", "Include percentage improvements"] },
+              skills: {
+                technical: ["JavaScript", "React", "Node.js", "Python"],
+                soft: ["Communication", "Leadership", "Problem-solving"],
+                missing: ["TypeScript", "AWS", "Docker"],
+                recommendations: ["Add cloud technologies", "Include specific frameworks"]
+              }
+            },
+            formattingAnalysis: {
+              atsCompatibility: {
+                score: 85,
+                issues: [
+                  { type: "Font Usage", severity: "low" as const, description: "Using standard fonts", fix: "Continue using standard fonts" },
+                  { type: "Section Headers", severity: "medium" as const, description: "Some headers may not be ATS-friendly", fix: "Use simple, clear section headers" }
+                ]
+              },
+              readability: {
+                score: 90,
+                fontIssues: [],
+                spacingIssues: [],
+                suggestions: ["Maintain consistent formatting", "Use bullet points effectively"]
+              }
+            },
+            recommendations: [
+              {
+                category: "content" as const,
+                priority: "high" as const,
+                title: "Quantify Achievements",
+                description: "Add specific numbers and percentages to your accomplishments",
+                impact: "Could increase overall score by 10-15 points"
+              },
+              {
+                category: "formatting" as const,
+                priority: "medium" as const,
+                title: "Optimize for ATS",
+                description: "Simplify section headers and avoid complex formatting",
+                impact: "Improves chances of passing automated screening"
+              }
+            ],
+            templateSuggestion: "Modern Professional Template",
+            status: 'completed' as const
+          };
+
+          await storage.updateCvAnalysis(analysis.id, mockAnalysis);
+        } catch (error) {
+          console.error("Analysis processing error:", error);
+          await storage.updateCvAnalysis(analysis.id, { status: 'failed' });
+        }
+      }, 3000); // 3 second delay for demo
+
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  app.get("/api/cv-analysis/:id", async (req, res) => {
+    try {
+      const analysisId = parseInt(req.params.id);
+      
+      if (isNaN(analysisId)) {
+        return res.status(400).json({ error: "Invalid analysis ID" });
+      }
+
+      const analysis = await storage.getCvAnalysis(analysisId);
+      if (!analysis) {
+        return res.status(404).json({ error: "Analysis not found" });
+      }
+
+      res.json(analysis);
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  // Dashboard routes
+  app.get("/api/dashboard/stats", async (req, res) => {
+    try {
+      const stats = await storage.getDashboardStats();
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  app.get("/api/dashboard/recent-activity", async (req, res) => {
+    try {
+      const activity = await storage.getRecentActivity();
+      res.json(activity);
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -4,8 +4,9 @@ import {
   candidates, 
   candidateAnalysis,
   cvOptimizations,
+  userCvs,
+  cvAnalyses,
   type User, 
-  type InsertUser,
   type JobDescription,
   type InsertJobDescription,
   type Candidate,
@@ -14,7 +15,11 @@ import {
   type InsertCandidateAnalysis,
   type CandidateWithAnalysis,
   type CvOptimization,
-  type InsertCvOptimization
+  type InsertCvOptimization,
+  type UserCv,
+  type InsertUserCv,
+  type CvAnalysis,
+  type InsertCvAnalysis,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, ilike, or, sql } from "drizzle-orm";
@@ -23,7 +28,7 @@ export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(insertUser: InsertUser): Promise<User>;
+  createUser(insertUser: any): Promise<User>;
 
   // Job Description methods
   getActiveJobDescription(): Promise<JobDescription | undefined>;
@@ -58,6 +63,23 @@ export interface IStorage {
   createCvOptimization(insertOptimization: InsertCvOptimization): Promise<CvOptimization>;
   getCvOptimization(id: number): Promise<CvOptimization | undefined>;
   updateCvOptimization(id: number, updates: Partial<CvOptimization>): Promise<void>;
+
+  // CV Library methods
+  getUserCvs(): Promise<UserCv[]>;
+  getUserCv(id: number): Promise<UserCv | undefined>;
+  createUserCv(insertCv: InsertUserCv): Promise<UserCv>;
+  updateUserCv(id: number, updates: Partial<UserCv>): Promise<void>;
+  deleteUserCv(id: number): Promise<void>;
+  setActiveCv(id: number): Promise<void>;
+
+  // CV Analysis methods
+  createCvAnalysis(insertAnalysis: InsertCvAnalysis): Promise<CvAnalysis>;
+  getCvAnalysis(id: number): Promise<CvAnalysis | undefined>;
+  updateCvAnalysis(id: number, updates: Partial<CvAnalysis>): Promise<void>;
+
+  // Dashboard methods
+  getDashboardStats(): Promise<any>;
+  getRecentActivity(): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -368,6 +390,92 @@ export class DatabaseStorage implements IStorage {
     await db.update(cvOptimizations)
       .set(updates)
       .where(eq(cvOptimizations.id, id));
+  }
+
+  // CV Library methods
+  async getUserCvs(): Promise<UserCv[]> {
+    return await db.select()
+      .from(userCvs)
+      .orderBy(desc(userCvs.updatedAt));
+  }
+
+  async getUserCv(id: number): Promise<UserCv | undefined> {
+    const [cv] = await db.select()
+      .from(userCvs)
+      .where(eq(userCvs.id, id))
+      .limit(1);
+    return cv;
+  }
+
+  async createUserCv(insertCv: InsertUserCv): Promise<UserCv> {
+    const [cv] = await db.insert(userCvs)
+      .values(insertCv)
+      .returning();
+    return cv;
+  }
+
+  async updateUserCv(id: number, updates: Partial<UserCv>): Promise<void> {
+    await db.update(userCvs)
+      .set(updates)
+      .where(eq(userCvs.id, id));
+  }
+
+  async deleteUserCv(id: number): Promise<void> {
+    await db.delete(userCvs)
+      .where(eq(userCvs.id, id));
+  }
+
+  async setActiveCv(id: number): Promise<void> {
+    // First deactivate all CVs
+    await db.update(userCvs)
+      .set({ isActive: false });
+    
+    // Then activate the selected CV
+    await db.update(userCvs)
+      .set({ isActive: true })
+      .where(eq(userCvs.id, id));
+  }
+
+  // CV Analysis methods
+  async createCvAnalysis(insertAnalysis: InsertCvAnalysis): Promise<CvAnalysis> {
+    const [analysis] = await db.insert(cvAnalyses)
+      .values(insertAnalysis)
+      .returning();
+    return analysis;
+  }
+
+  async getCvAnalysis(id: number): Promise<CvAnalysis | undefined> {
+    const [analysis] = await db.select()
+      .from(cvAnalyses)
+      .where(eq(cvAnalyses.id, id))
+      .limit(1);
+    return analysis;
+  }
+
+  async updateCvAnalysis(id: number, updates: Partial<CvAnalysis>): Promise<void> {
+    await db.update(cvAnalyses)
+      .set(updates)
+      .where(eq(cvAnalyses.id, id));
+  }
+
+  // Dashboard methods
+  async getDashboardStats(): Promise<any> {
+    const totalCvs = await db.select({ count: sql`count(*)` }).from(userCvs);
+    const totalAnalyses = await db.select({ count: sql`count(*)` }).from(cvAnalyses);
+    const totalOptimizations = await db.select({ count: sql`count(*)` }).from(cvOptimizations);
+    
+    return {
+      totalCvs: Number(totalCvs[0]?.count) || 0,
+      newCvsThisWeek: 0, // Could implement date filtering if needed
+      totalAnalyses: Number(totalAnalyses[0]?.count) || 0,
+      totalOptimizations: Number(totalOptimizations[0]?.count) || 0,
+      successRate: 95 // Static for demo
+    };
+  }
+
+  async getRecentActivity(): Promise<any[]> {
+    // Return empty for now - could implement with activity tracking
+    return [];
   }
 }
 
