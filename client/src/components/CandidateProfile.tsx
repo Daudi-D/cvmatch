@@ -41,12 +41,13 @@ export default function CandidateProfile({ candidateId, onClose }: CandidateProf
   }
 
   const getInitials = (name: string) => {
+    if (!name) return 'UN';
     return name
       .split(' ')
-      .map(word => word[0])
+      .map(word => word?.[0] || '')
       .join('')
       .toUpperCase()
-      .slice(0, 2);
+      .slice(0, 2) || 'UN';
   };
 
   const getScoreColor = (score: number) => {
