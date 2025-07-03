@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Download, FileText, Target, CheckCircle, AlertTriangle, Clock, Bot, Eye, Edit } from "lucide-react";
+import { Download, FileText, Target, CheckCircle, AlertTriangle, Clock, Bot, Eye, Edit, Upload } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -56,9 +56,75 @@ export default function CVOptimizerPage() {
   const [optimizationId, setOptimizationId] = useState<number | null>(null);
   const [editingOptimizedCV, setEditingOptimizedCV] = useState(false);
   const [optimizedCVDraft, setOptimizedCVDraft] = useState("");
+  const [cvInputMode, setCvInputMode] = useState<'text' | 'file'>('text');
+  const [jdInputMode, setJdInputMode] = useState<'text' | 'file'>('text');
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // File parsing function
+  const parseFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/parse-file', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to parse file');
+      }
+
+      const data = await response.json();
+      return data.text;
+    } catch (error) {
+      throw new Error('Failed to parse file. Please try a different format.');
+    }
+  };
+
+  // Handle CV file upload
+  const handleCvFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await parseFile(file);
+      setCvText(text);
+      toast({
+        title: "CV Uploaded",
+        description: "Your CV has been successfully parsed and loaded.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload Error",
+        description: error.message || "Failed to upload CV",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle JD file upload
+  const handleJdFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await parseFile(file);
+      setJobDescriptionText(text);
+      toast({
+        title: "Job Description Uploaded",
+        description: "The job description has been successfully parsed and loaded.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload Error",
+        description: error.message || "Failed to upload job description",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Submit CV for optimization
   const optimizeMutation = useMutation({
@@ -190,35 +256,123 @@ export default function CVOptimizerPage() {
           {/* Input Section */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Your CV
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Your CV
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={cvInputMode === 'text' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setCvInputMode('text')}
+                  >
+                    Text
+                  </Button>
+                  <Button
+                    variant={cvInputMode === 'file' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setCvInputMode('file')}
+                  >
+                    <Upload className="h-4 w-4 mr-1" />
+                    Upload
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Textarea
-                placeholder="Paste your current CV content here..."
-                value={cvText}
-                onChange={(e) => setCvText(e.target.value)}
-                className="min-h-[300px] resize-none"
-              />
+              {cvInputMode === 'text' ? (
+                <Textarea
+                  placeholder="Paste your current CV content here..."
+                  value={cvText}
+                  onChange={(e) => setCvText(e.target.value)}
+                  className="min-h-[300px] resize-none"
+                />
+              ) : (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      onChange={handleCvFileUpload}
+                      className="hidden"
+                      id="cv-file-upload"
+                    />
+                    <label htmlFor="cv-file-upload" className="cursor-pointer">
+                      <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600">Click to upload your CV</p>
+                      <p className="text-xs text-gray-500 mt-1">PDF, DOCX, or TXT files (max 10MB)</p>
+                    </label>
+                  </div>
+                  {cvText && (
+                    <div className="bg-gray-50 p-4 rounded-lg max-h-[200px] overflow-y-auto">
+                      <p className="text-sm text-gray-600 mb-2">Uploaded CV Preview:</p>
+                      <p className="text-xs text-gray-800 whitespace-pre-wrap">{cvText.substring(0, 500)}...</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Job Description
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Job Description
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={jdInputMode === 'text' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setJdInputMode('text')}
+                  >
+                    Text
+                  </Button>
+                  <Button
+                    variant={jdInputMode === 'file' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setJdInputMode('file')}
+                  >
+                    <Upload className="h-4 w-4 mr-1" />
+                    Upload
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Textarea
-                placeholder="Paste the job description here..."
-                value={jobDescriptionText}
-                onChange={(e) => setJobDescriptionText(e.target.value)}
-                className="min-h-[300px] resize-none"
-              />
+              {jdInputMode === 'text' ? (
+                <Textarea
+                  placeholder="Paste the job description here..."
+                  value={jobDescriptionText}
+                  onChange={(e) => setJobDescriptionText(e.target.value)}
+                  className="min-h-[300px] resize-none"
+                />
+              ) : (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      onChange={handleJdFileUpload}
+                      className="hidden"
+                      id="jd-file-upload"
+                    />
+                    <label htmlFor="jd-file-upload" className="cursor-pointer">
+                      <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600">Click to upload job description</p>
+                      <p className="text-xs text-gray-500 mt-1">PDF, DOCX, or TXT files (max 10MB)</p>
+                    </label>
+                  </div>
+                  {jobDescriptionText && (
+                    <div className="bg-gray-50 p-4 rounded-lg max-h-[200px] overflow-y-auto">
+                      <p className="text-sm text-gray-600 mb-2">Uploaded Job Description Preview:</p>
+                      <p className="text-xs text-gray-800 whitespace-pre-wrap">{jobDescriptionText.substring(0, 500)}...</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

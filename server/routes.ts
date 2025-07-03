@@ -342,6 +342,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // File parsing endpoint for CV Optimizer
+  app.post("/api/parse-file", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { parseFile, validateFileType, validateFileSize } = await import('./services/fileParser');
+      
+      if (!validateFileType(req.file.originalname)) {
+        return res.status(400).json({ error: "File type not supported. Please upload PDF, DOCX, or TXT files." });
+      }
+
+      if (!validateFileSize(req.file.size)) {
+        return res.status(400).json({ error: "File too large. Maximum size is 10MB." });
+      }
+
+      const text = await parseFile(req.file.path, req.file.originalname);
+      
+      res.json({ text });
+    } catch (error: any) {
+      console.error("File parsing error:", error);
+      res.status(500).json({ error: error?.message || 'Failed to parse file' });
+    }
+  });
+
   // CV Optimization endpoints
   app.post("/api/cv-optimization", async (req, res) => {
     try {
