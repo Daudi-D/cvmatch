@@ -1,11 +1,9 @@
 import * as fs from 'fs';
 import mammoth from 'mammoth';
+import pdf from 'pdf-parse';
 
-// Dynamic import for pdf-parse to avoid initialization issues
-async function getPdfParse(): Promise<any> {
-  const pdfParse = await import('pdf-parse');
-  return pdfParse.default;
-}
+// Set environment to avoid pdf-parse test file issues
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 export async function parseFile(filePath: string, fileName: string): Promise<string> {
   const extension = fileName.toLowerCase().split('.').pop();
@@ -28,7 +26,6 @@ export async function parseFile(filePath: string, fileName: string): Promise<str
 
 async function parsePDF(filePath: string): Promise<string> {
   const dataBuffer = fs.readFileSync(filePath);
-  const pdf = await getPdfParse();
   const data = await pdf(dataBuffer);
   return data.text;
 }
