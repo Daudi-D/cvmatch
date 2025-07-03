@@ -342,6 +342,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CV Optimization endpoints
+  app.post("/api/cv-optimization", async (req, res) => {
+    try {
+      const { cvText, jobDescriptionText, applicationMethod } = req.body;
+      
+      if (!cvText || !jobDescriptionText || !applicationMethod) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      if (!['ats', 'email'].includes(applicationMethod)) {
+        return res.status(400).json({ error: "Application method must be 'ats' or 'email'" });
+      }
+
+      // Create initial record
+      const optimization = await storage.createCvOptimization({
+        originalCvText: cvText,
+        jobDescriptionText: jobDescriptionText,
+        applicationMethod: applicationMethod as 'ats' | 'email',
+        status: 'processing'
+      });
+
+      res.json({ 
+        optimizationId: optimization.id,
+        status: 'processing' 
+      });
+
+      // Process in background
+      try {
+        const { analyzeCVAlignment, optimizeCV } = await import('./services/cvOptimizer');
+        
+        const analysis = await analyzeCVAlignment(cvText, jobDescriptionText, applicationMethod);
+        const optimizedCV = await optimizeCV(cvText, jobDescriptionText, applicationMethod, analysis);
+
+        await storage.updateCvOptimization(optimization.id, {
+          optimizedCvText: optimizedCV,
+          improvementSuggestions: analysis.improvementSuggestions,
+          keywordMatches: analysis.keywordMatches,
+          skillsAlignment: analysis.skillsAlignment,
+          experienceAlignment: analysis.experienceAlignment,
+          overallScore: analysis.overallScore,
+          status: 'completed'
+        });
+      } catch (error) {
+        console.error("CV optimization processing error:", error);
+        await storage.updateCvOptimization(optimization.id, {
+          status: 'failed'
+        });
+      }
+    } catch (error: any) {
+      console.error("CV optimization error:", error);
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  app.get("/api/cv-optimization/:id", async (req, res) => {
+    try {
+      const optimizationId = parseInt(req.params.id);
+      if (isNaN(optimizationId)) {
+        return res.status(400).json({ error: "Invalid optimization ID" });
+      }
+
+      const optimization = await storage.getCvOptimization(optimizationId);
+      if (!optimization) {
+        return res.status(404).json({ error: "Optimization not found" });
+      }
+
+      res.json(optimization);
+    } catch (error: any) {
+      console.error("Get CV optimization error:", error);
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
+  app.post("/api/cv-optimization/:id/improve-section", async (req, res) => {
+    try {
+      const optimizationId = parseInt(req.params.id);
+      const { originalText, suggestion } = req.body;
+      
+      if (isNaN(optimizationId) || !originalText || !suggestion) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const optimization = await storage.getCvOptimization(optimizationId);
+      if (!optimization) {
+        return res.status(404).json({ error: "Optimization not found" });
+      }
+
+      const { generateSpecificImprovement } = await import('./services/cvOptimizer');
+      
+      const improvedText = await generateSpecificImprovement(
+        originalText,
+        suggestion,
+        optimization.jobDescriptionText,
+        optimization.applicationMethod
+      );
+
+      res.json({ improvedText });
+    } catch (error: any) {
+      console.error("CV section improvement error:", error);
+      res.status(500).json({ error: error?.message || 'Unknown error' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

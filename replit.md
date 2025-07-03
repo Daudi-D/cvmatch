@@ -95,6 +95,13 @@ TalentMatch ATS is a full-stack application that streamlines the recruitment pro
   - Enhanced work experience display to convert OpenAI paragraph descriptions to bullet points
   - Fixed PDF export toggle functionality to properly exclude AI analysis when unchecked
   - Improved user experience with better text formatting and layout management
+- July 03, 2025. Added CV Optimizer feature:
+  - Built comprehensive CV-to-job-description alignment tool with AI analysis
+  - Implemented keyword matching, skills alignment, and experience relevance scoring
+  - Added ATS vs Email optimization modes for different application methods
+  - Created one-click improvement suggestions with AI-powered text enhancement
+  - Built interactive comparison interface with downloadable optimized CVs
+  - Added new database table for CV optimization tracking and results storage
 
 ## User Preferences
 

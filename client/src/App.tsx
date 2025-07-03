@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import JobsPage from "@/pages/jobs";
 import JobCandidatesPage from "@/pages/job-candidates";
+import CVOptimizerPage from "@/pages/cv-optimizer";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/jobs" component={JobsPage} />
       <Route path="/jobs/:jobId/candidates" component={JobCandidatesPage} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/cv-optimizer" component={CVOptimizerPage} />
       <Route component={NotFound} />
     </Switch>
   );

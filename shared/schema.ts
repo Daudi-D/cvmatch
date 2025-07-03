@@ -79,6 +79,21 @@ export const jobDescriptionsRelations = relations(jobDescriptions, ({ many }) =>
   analyses: many(candidateAnalysis),
 }));
 
+export const cvOptimizations = pgTable("cv_optimizations", {
+  id: serial("id").primaryKey(),
+  originalCvText: text("original_cv_text").notNull(),
+  jobDescriptionText: text("job_description_text").notNull(),
+  applicationMethod: text("application_method").notNull().$type<"ats" | "email">(),
+  optimizedCvText: text("optimized_cv_text"),
+  improvementSuggestions: jsonb("improvement_suggestions"), // Array of suggestions with positions
+  keywordMatches: jsonb("keyword_matches"), // Keywords analysis
+  skillsAlignment: jsonb("skills_alignment"), // Skills matching analysis
+  experienceAlignment: jsonb("experience_alignment"), // Experience matching analysis
+  overallScore: real("overall_score"), // 0-100 alignment score
+  status: text("status").notNull().default("processing").$type<"processing" | "completed" | "failed">(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -99,6 +114,11 @@ export const insertCandidateAnalysisSchema = createInsertSchema(candidateAnalysi
   createdAt: true,
 });
 
+export const insertCvOptimizationSchema = createInsertSchema(cvOptimizations).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertJobDescription = z.infer<typeof insertJobDescriptionSchema>;
@@ -107,6 +127,9 @@ export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
 export type Candidate = typeof candidates.$inferSelect;
 export type InsertCandidateAnalysis = z.infer<typeof insertCandidateAnalysisSchema>;
 export type CandidateAnalysis = typeof candidateAnalysis.$inferSelect;
+
+export type InsertCvOptimization = z.infer<typeof insertCvOptimizationSchema>;
+export type CvOptimization = typeof cvOptimizations.$inferSelect;
 
 export type CandidateWithAnalysis = Candidate & {
   analysis?: CandidateAnalysis;

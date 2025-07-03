@@ -3,6 +3,7 @@ import {
   jobDescriptions, 
   candidates, 
   candidateAnalysis,
+  cvOptimizations,
   type User, 
   type InsertUser,
   type JobDescription,
@@ -11,7 +12,9 @@ import {
   type InsertCandidate,
   type CandidateAnalysis,
   type InsertCandidateAnalysis,
-  type CandidateWithAnalysis
+  type CandidateWithAnalysis,
+  type CvOptimization,
+  type InsertCvOptimization
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, ilike, or, sql } from "drizzle-orm";
@@ -50,6 +53,11 @@ export interface IStorage {
 
   // Analysis methods
   createCandidateAnalysis(insertAnalysis: InsertCandidateAnalysis): Promise<CandidateAnalysis>;
+
+  // CV Optimization methods
+  createCvOptimization(insertOptimization: InsertCvOptimization): Promise<CvOptimization>;
+  getCvOptimization(id: number): Promise<CvOptimization | undefined>;
+  updateCvOptimization(id: number, updates: Partial<CvOptimization>): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -339,6 +347,27 @@ export class DatabaseStorage implements IStorage {
       .update(candidates)
       .set({ interviewNotes })
       .where(eq(candidates.id, candidateId));
+  }
+
+  async createCvOptimization(insertOptimization: InsertCvOptimization): Promise<CvOptimization> {
+    const [optimization] = await db.insert(cvOptimizations)
+      .values(insertOptimization)
+      .returning();
+    return optimization;
+  }
+
+  async getCvOptimization(id: number): Promise<CvOptimization | undefined> {
+    const [optimization] = await db.select()
+      .from(cvOptimizations)
+      .where(eq(cvOptimizations.id, id))
+      .limit(1);
+    return optimization;
+  }
+
+  async updateCvOptimization(id: number, updates: Partial<CvOptimization>): Promise<void> {
+    await db.update(cvOptimizations)
+      .set(updates)
+      .where(eq(cvOptimizations.id, id));
   }
 }
 

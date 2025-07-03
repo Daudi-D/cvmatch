@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, Briefcase } from "lucide-react";
+import { Plus, Briefcase, Target } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -35,6 +35,16 @@ export default function Navigation() {
                   } px-3 py-2 text-sm font-medium flex items-center gap-2 cursor-pointer`}>
                     <Plus className="h-4 w-4" />
                     New Hiring Process
+                  </span>
+                </Link>
+                <Link href="/cv-optimizer">
+                  <span className={`${
+                    location === "/cv-optimizer"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-gray-500 hover:text-gray-700"
+                  } px-3 py-2 text-sm font-medium flex items-center gap-2 cursor-pointer`}>
+                    <Target className="h-4 w-4" />
+                    CV Optimizer
                   </span>
                 </Link>
               </div>
