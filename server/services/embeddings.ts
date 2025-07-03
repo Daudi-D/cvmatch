@@ -27,7 +27,10 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
 export function similarityToScore(similarity: number): number {
   // Convert cosine similarity (-1 to 1) to percentage (0 to 100)
-  return Math.round(((similarity + 1) / 2) * 100);
+  // Apply stricter scoring - square the similarity to make it less generous
+  const normalizedSimilarity = (similarity + 1) / 2;
+  const stricterScore = Math.pow(normalizedSimilarity, 1.5); // More aggressive than squaring
+  return Math.round(stricterScore * 100);
 }
 
 export async function calculateMatchScore(

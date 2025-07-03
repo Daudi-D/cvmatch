@@ -8,6 +8,7 @@ import { parseFile, validateFileType, validateFileSize } from "./services/filePa
 import { extractJobDescriptionInfo, extractCandidateInfo, analyzeCandidateMatch } from "./services/openai.js";
 import { generateJobDescriptionEmbedding, generateCandidateEmbedding, calculateMatchScore } from "./services/embeddings.js";
 import { insertJobDescriptionSchema, insertCandidateSchema, insertCandidateAnalysisSchema } from "@shared/schema.js";
+import { generateCandidatePDF } from "./services/pdfGenerator.js";
 
 // Configure multer for file uploads
 const uploadDir = './uploads';
@@ -231,6 +232,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json([]);
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PDF Export endpoint
+  app.get("/api/candidates/:id/pdf", async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.id);
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ error: "Invalid candidate ID" });
+      }
+
+      const candidate = await storage.getCandidateWithAnalysis(candidateId);
+      if (!candidate) {
+        return res.status(404).json({ error: "Candidate not found" });
+      }
+
+      const pdfBuffer = generateCandidatePDF(candidate);
+      const candidateName = candidate.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'candidate';
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${candidateName}_profile.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
     }
   });
 

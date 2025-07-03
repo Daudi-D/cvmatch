@@ -82,6 +82,12 @@ TalentMatch ATS is a full-stack application that streamlines the recruitment pro
   - Detailed candidate profiles with AI recommendations
   - PostgreSQL database with complete schema
   - Error handling and file validation
+- July 03, 2025. Major improvements based on user feedback:
+  - Made AI scoring significantly less generous (power scaling applied)
+  - Enhanced AI analysis to cross-check job responsibilities against candidate experience
+  - Added PDF export functionality with Core Maestro Management branding
+  - Removed contact details from PDF exports for recruiter privacy control
+  - Fixed UI bugs in candidate profile data loading
 
 ## User Preferences
 

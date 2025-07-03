@@ -242,7 +242,17 @@ export default function CandidateProfile({ candidateId, onClose }: CandidateProf
 
           {/* Action Buttons */}
           <div className="mt-6 flex justify-end space-x-3">
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = `/api/candidates/${candidateId}/pdf`;
+                link.download = `${candidate?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'candidate'}_profile.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+            >
               <Download className="mr-2 h-4 w-4" />
               Download CV
             </Button>

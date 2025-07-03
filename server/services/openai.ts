@@ -31,7 +31,7 @@ export async function analyzeCandidateMatch(
 }> {
   try {
     const prompt = `
-You are an expert HR analyst. Analyze how well this candidate matches the job description.
+You are an expert HR analyst. Analyze how well this candidate matches the job description with STRICT SCORING criteria.
 
 CANDIDATE PROFILE:
 ${candidateText}
@@ -40,20 +40,31 @@ JOB DESCRIPTION:
 ${jobDescriptionText}
 
 Analyze the match and provide:
-1. A match score from 0-100 based on skills, experience, qualifications, and cultural fit
+1. A match score from 0-100 with STRICT scoring (be conservative - only give high scores for exceptional matches)
 2. Top 3-5 strengths that make this candidate suitable
 3. Top 3-5 weaknesses or missing qualifications
 4. A recommendation (hire, consider with training, reject)
 5. A detailed 2-3 sentence analysis explaining the overall assessment
 
-Consider:
-- Required vs preferred qualifications
-- Years of experience
-- Industry experience
+SCORING GUIDELINES (BE STRICT):
+- 90-100: Perfect match, exceeds all requirements
+- 80-89: Strong match, meets all requirements with some extras
+- 70-79: Good match, meets most requirements
+- 60-69: Moderate match, meets some requirements
+- 50-59: Weak match, significant gaps
+- Below 50: Poor match, major misalignment
+
+CRITICAL ANALYSIS AREAS:
+- Required vs preferred qualifications (strict adherence required)
+- Years of experience (exact match to requirements)
+- Industry experience (relevant sector experience)
 - Skills match (technical and soft skills)
-- Education and certifications
-- Career progression
+- Education and certifications (must-haves vs nice-to-haves)
+- Career progression and growth trajectory
+- JOB RESPONSIBILITIES: Cross-check if candidate has actual experience performing the specific job responsibilities listed, not just related skills
 - Cultural fit indicators
+
+Pay special attention to whether the candidate has demonstrated experience with the specific responsibilities outlined in the job description, not just general skills.
 
 Respond with JSON in this exact format:
 {
