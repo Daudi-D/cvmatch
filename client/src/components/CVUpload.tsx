@@ -42,11 +42,8 @@ export default function CVUpload({ jobDescriptionId, onComplete }: CVUploadProps
       }));
       setProcessingFiles(fileStatuses);
 
-      const response = await apiRequest('/api/candidates/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      return response;
+      const response = await apiRequest('POST', '/api/candidates/upload', formData);
+      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });

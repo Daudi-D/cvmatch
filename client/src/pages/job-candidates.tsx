@@ -57,10 +57,7 @@ export default function JobCandidatesPage() {
   // Update candidate status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ candidateId, status }: { candidateId: number; status: string }) => {
-      return apiRequest(`/api/candidates/${candidateId}/status`, {
-        method: 'PATCH',
-        body: { status },
-      });
+      return apiRequest('PATCH', `/api/candidates/${candidateId}/status`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });

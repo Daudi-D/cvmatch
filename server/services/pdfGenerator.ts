@@ -1,4 +1,4 @@
-const jsPDF = require('jspdf').jsPDF;
+import { jsPDF } from 'jspdf';
 import type { CandidateWithAnalysis } from '@shared/schema';
 
 export function generateCandidatePDF(candidate: CandidateWithAnalysis): Buffer {

@@ -17,13 +17,23 @@ export default function CandidatesDashboard({ onViewCandidate }: CandidatesDashb
   const [scoreFilter, setScoreFilter] = useState("all");
   const [page, setPage] = useState(1);
 
+  // Get the active job description
+  const { data: activeJob } = useQuery({
+    queryKey: ["/api/job-description/active"],
+  });
+
   const { data: candidatesData, isLoading } = useQuery({
-    queryKey: ["/api/candidates", { search, scoreFilter, page }],
+    queryKey: ["/api/candidates", { jobDescriptionId: activeJob?.id, search, scoreFilter, page }],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: "10",
       });
+      
+      // Only fetch candidates for the active job
+      if (activeJob?.id) {
+        params.append("jobDescriptionId", activeJob.id.toString());
+      }
       
       if (search) params.append("search", search);
       
@@ -50,6 +60,7 @@ export default function CandidatesDashboard({ onViewCandidate }: CandidatesDashb
       if (!response.ok) throw new Error('Failed to fetch candidates');
       return response.json();
     },
+    enabled: !!activeJob?.id, // Only run query when we have an active job
   });
 
   const getScoreColor = (score: number) => {
@@ -84,6 +95,25 @@ export default function CandidatesDashboard({ onViewCandidate }: CandidatesDashb
       .slice(0, 2) || 'UN';
   };
 
+  // Show empty state if no active job
+  if (!activeJob) {
+    return (
+      <div className="mb-8" id="candidates-dashboard">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">No Active Job Position</h2>
+            <p className="text-gray-600 mb-6">
+              Upload a job description to start reviewing candidates for that position.
+            </p>
+            <p className="text-sm text-gray-500">
+              Once you upload a job description, you can then upload candidate CVs and see AI-powered matching results here.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-8" id="candidates-dashboard">
       <Card>
@@ -93,7 +123,7 @@ export default function CandidatesDashboard({ onViewCandidate }: CandidatesDashb
               <div>
                 <h2 className="text-2xl font-semibold text-gray-900">Candidates</h2>
                 <p className="text-gray-600 mt-1">
-                  {candidatesData?.total || 0} candidates for active position
+                  {candidatesData?.total || 0} candidates for {activeJob.title}
                 </p>
               </div>
               <div className="flex items-center space-x-4">
