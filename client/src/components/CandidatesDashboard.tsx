@@ -218,7 +218,7 @@ export default function CandidatesDashboard({ onViewCandidate }: CandidatesDashb
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(candidate.createdAt!)}
+                        {candidate.createdAt ? formatDate(candidate.createdAt) : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">

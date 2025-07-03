@@ -14,6 +14,11 @@ interface CandidateProfileProps {
 export default function CandidateProfile({ candidateId, onClose }: CandidateProfileProps) {
   const { data: candidate, isLoading } = useQuery<CandidateWithAnalysis>({
     queryKey: ["/api/candidates", candidateId],
+    queryFn: async () => {
+      const response = await fetch(`/api/candidates/${candidateId}`);
+      if (!response.ok) throw new Error('Failed to fetch candidate');
+      return response.json();
+    },
   });
 
   if (isLoading) {
