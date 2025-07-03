@@ -37,7 +37,9 @@ export default function JobCandidatesPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [scoreFilter, setScoreFilter] = useState<string>("");
+  const [scoreFilter, setScoreFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -50,7 +52,47 @@ export default function JobCandidatesPage() {
 
   // Get candidates for this job
   const { data: candidatesData, isLoading } = useQuery({
-    queryKey: ['/api/candidates', { jobDescriptionId: jobId, search: searchTerm, status: statusFilter === 'all' ? '' : statusFilter }],
+    queryKey: ['/api/candidates', { 
+      jobDescriptionId: jobId, 
+      search: searchTerm, 
+      status: statusFilter === 'all' ? '' : statusFilter,
+      score: scoreFilter,
+      page: currentPage,
+      limit: ITEMS_PER_PAGE
+    }],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: ITEMS_PER_PAGE.toString(),
+      });
+      
+      if (jobId) params.append('jobDescriptionId', jobId.toString());
+      if (searchTerm) params.append('search', searchTerm);
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      
+      if (scoreFilter !== 'all') {
+        switch (scoreFilter) {
+          case '90-100':
+            params.append('minScore', '90');
+            break;
+          case '80-89':
+            params.append('minScore', '80');
+            params.append('maxScore', '89');
+            break;
+          case '70-79':
+            params.append('minScore', '70');
+            params.append('maxScore', '79');
+            break;
+          case 'below-70':
+            params.append('maxScore', '69');
+            break;
+        }
+      }
+
+      const response = await fetch(`/api/candidates?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch candidates');
+      return response.json();
+    },
     enabled: !!jobId,
   });
 
@@ -147,6 +189,18 @@ export default function JobCandidatesPage() {
                 <SelectItem value="hired">Hired</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={scoreFilter} onValueChange={setScoreFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All Scores" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Scores</SelectItem>
+                <SelectItem value="90-100">90-100%</SelectItem>
+                <SelectItem value="80-89">80-89%</SelectItem>
+                <SelectItem value="70-79">70-79%</SelectItem>
+                <SelectItem value="below-70">Below 70%</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -167,8 +221,9 @@ export default function JobCandidatesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {candidatesData?.candidates?.map((candidate: CandidateWithAnalysis) => (
+        <div>
+          <div className="space-y-4">
+            {candidatesData?.candidates?.map((candidate: CandidateWithAnalysis) => (
             <Card key={candidate.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
@@ -245,6 +300,35 @@ export default function JobCandidatesPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Pagination Controls */}
+        {candidatesData && candidatesData.total > ITEMS_PER_PAGE && (
+          <div className="flex justify-center items-center gap-4 mt-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {Math.ceil(candidatesData.total / ITEMS_PER_PAGE)} 
+              ({candidatesData.total} total candidates)
+            </span>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              disabled={!candidatesData.hasMore}
+            >
+              Next
+            </Button>
+          </div>
+        )}
         </div>
       )}
 

@@ -294,6 +294,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update interview notes
+  app.patch("/api/candidates/:id/notes", async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.id);
+      const { interviewNotes } = req.body;
+
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+
+      await storage.updateCandidateNotes(candidateId, interviewNotes);
+      res.json({ message: "Interview notes updated successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error?.message || 'Unknown error' });
+    }
+  });
+
   // PDF Export endpoint
   app.get("/api/candidates/:id/pdf", async (req, res) => {
     try {

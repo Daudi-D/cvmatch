@@ -39,6 +39,7 @@ export const candidates = pgTable("candidates", {
   fileName: text("file_name").notNull(),
   embedding: text("embedding"), // JSON string of embedding vector
   status: text("status").default("pending").$type<"pending" | "shortlisted" | "rejected" | "hired">(),
+  interviewNotes: text("interview_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

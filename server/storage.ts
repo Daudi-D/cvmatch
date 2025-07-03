@@ -46,6 +46,7 @@ export interface IStorage {
   }>;
   getCandidateWithAnalysis(candidateId: number): Promise<CandidateWithAnalysis | undefined>;
   updateCandidateStatus(candidateId: number, status: string): Promise<void>;
+  updateCandidateNotes(candidateId: number, interviewNotes: string): Promise<void>;
 
   // Analysis methods
   createCandidateAnalysis(insertAnalysis: InsertCandidateAnalysis): Promise<CandidateAnalysis>;
@@ -330,6 +331,13 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(candidates)
       .set({ status: status as any })
+      .where(eq(candidates.id, candidateId));
+  }
+
+  async updateCandidateNotes(candidateId: number, interviewNotes: string): Promise<void> {
+    await db
+      .update(candidates)
+      .set({ interviewNotes })
       .where(eq(candidates.id, candidateId));
   }
 }
